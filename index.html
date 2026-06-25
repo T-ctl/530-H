@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Смарт-интерфейс первичного осмотра (Приказ 530н)</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Все стили остаются без изменений, можно вынести в style.css */
+        :root {
+            --danger: #ff4444; --warning: #ffaa00; --success: #00C851;
+            --bg: #1a1a2e; --panel: #16213e; --card: #0f3460;
+            --text: #e0e0e0; --text-secondary: #a0a0a0; --border: #2a2a4a;
+            --accent: #e94560; --accent-hover: #ff6b81; --input-bg: #1a1a3e;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.5; }
+        .app-container { max-width:1500px; margin:0 auto; padding:20px; }
+        header { background:linear-gradient(135deg,var(--panel),var(--card)); border:1px solid var(--border); border-radius:16px; padding:20px 30px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; }
+        header h1 { font-size:1.3em; font-weight:600; color:var(--accent); }
+        .btn { padding:10px 18px; border:none; border-radius:10px; cursor:pointer; font-size:0.85em; font-weight:600; transition:all 0.2s; }
+        .btn-primary { background:var(--accent); color:white; } .btn-primary:hover { background:var(--accent-hover); transform:translateY(-1px); box-shadow:0 4px 15px rgba(233,69,96,0.4); }
+        .btn-secondary { background:var(--card); color:var(--text); border:1px solid var(--border); } .btn-secondary:hover { background:#1a3a6e; }
+        .btn-warning { background:#ff8800; color:white; } .btn-success { background:#00a86b; color:white; }
+        .main-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+        @media (max-width:1100px) { .main-grid { grid-template-columns:1fr; } }
+        .panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:18px; }
+        .panel-title { font-size:1.05em; font-weight:700; color:var(--accent); margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid var(--border); }
+        .panel-title::before { content: '▸ '; }
+        .form-row { display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; align-items:flex-end; }
+        .form-group { display:flex; flex-direction:column; gap:4px; flex:1; min-width:140px; position:relative; }
+        .form-group label { font-size:0.75em; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; }
+        .form-group input, .form-group select, .form-group textarea { background:var(--input-bg); border:1px solid var(--border); border-radius:8px; padding:9px 11px; color:var(--text); font-size:0.88em; font-family:inherit; transition:all 0.2s; width:100%; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(233,69,96,0.12); }
+        .form-group textarea { resize:vertical; min-height:65px; overflow-y:hidden; }
+        .vital-signs { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:10px; }
+        .vital-sign { background:var(--card); border:2px solid var(--border); border-radius:12px; padding:12px; transition:all 0.3s; }
+        .vital-sign label { display:block; font-size:0.72em; color:var(--text-secondary); margin-bottom:3px; font-weight:600; }
+        .vital-sign input { width:100%; background:transparent; border:none; color:var(--text); font-size:1.2em; font-weight:700; padding:3px 0; outline:none; }
+        .vital-sign.warning { border-color:var(--warning); background:rgba(255,170,0,0.2); } .vital-sign.danger { border-color:var(--danger); background:rgba(255,68,68,0.2); animation:pulse-danger 1.5s infinite; }
+        @keyframes pulse-danger { 0%,100%{ box-shadow:0 0 8px rgba(255,68,68,0.2); } 50%{ box-shadow:0 0 20px rgba(255,68,68,0.6); } }
+        .flg-warning { color:var(--danger); font-weight:700; font-size:0.85em; animation:blink 1s infinite; } @keyframes blink { 50%{ opacity:0.5; } }
+        .diagnosis-suggestion { background:var(--card); border:1px solid var(--accent); border-radius:8px; padding:8px 12px; margin-top:4px; font-size:0.85em; color:var(--accent-hover); cursor:pointer; } .diagnosis-suggestion:hover { background:#1a3a6e; }
+        .tag { display:inline-flex; align-items:center; flex-wrap:wrap; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:5px 12px; margin:4px; font-size:0.8em; }
+        .tag select, .tag input { background:var(--input-bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:4px; font-size:0.8em; margin-left:6px; min-width:60px; }
+        .preview-box { background:#0a0a1a; border:1px solid var(--border); border-radius:10px; padding:16px; font-family:'Consolas','Monaco',monospace; font-size:0.82em; white-space:pre-wrap; max-height:500px; overflow-y:auto; color:#c0c0c0; line-height:1.5; }
+        .allergy-entry { display:flex; gap:6px; align-items:flex-end; flex-wrap:wrap; } .allergy-tag { display:inline-flex; align-items:center; gap:4px; background:rgba(255,68,68,0.2); border:1px solid var(--danger); border-radius:16px; padding:3px 10px; font-size:0.78em; margin:2px; } .allergy-tag .remove-allergy { cursor:pointer; color:var(--danger); font-weight:bold; }
+        .section-divider { border-top:1px dashed var(--border); margin:10px 0; opacity:0.5; }
+        .priority-field { border-left:3px solid var(--accent); padding-left:10px; }
+        .priority-field label { color:var(--accent-hover) !important; font-weight:700 !important; }
+        .checkbox-group { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:8px; }
+        .infection-item { display:flex; flex-direction:column; align-items:flex-start; }
+        .infection-check { display:flex; align-items:center; gap:4px; }
+        .infection-check label { cursor:pointer; font-size:0.8em; }
+        .infection-detail { margin-top:4px; display:none; }
+        .infection-detail input { width:130px; background:var(--input-bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:4px; font-size:0.8em; }
+        .drug-hint { font-size:0.7em; color:var(--text-secondary); margin-top:2px; }
+        .autocomplete-dropdown, .abt-dropdown, .mucous-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: var(--input-bg); border: 1px solid var(--accent);
+            border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto;
+            z-index: 1000; display: none; list-style: none; padding: 0; margin: 0;
+        }
+        .autocomplete-dropdown li, .abt-dropdown li, .mucous-dropdown li {
+            padding: 8px 11px; cursor: pointer; font-size: 0.85em; color: var(--text);
+        }
+        .autocomplete-dropdown li:hover, .abt-dropdown li:hover, .mucous-dropdown li:hover { background: var(--card); }
+        .patient-info { color: var(--accent-hover); font-weight: 600; }
+        .modal { display:none; position:fixed; z-index:2000; left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8); justify-content:center; align-items:center; }
+        .modal-content { background:var(--panel); padding:20px; border-radius:12px; text-align:center; }
+        #scannerVideo { max-width:300px; border-radius:8px; margin-bottom:10px; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- Панель идентификации -->
+    <div class="panel" id="qrPanel">
+        <div class="panel-title">📱 Идентификатор пациента (QR/штрихкод + дата рождения)</div>
+        <div class="form-row">
+            <div class="form-group" style="flex:2;"><label>Уникальный код</label><input type="text" id="patientIdInput" placeholder="Введите или отсканируйте код" oninput="updatePatientId()"></div>
+            <div class="form-group" style="flex:1;"><label>Дата рождения</label><input type="date" id="birthDateInput" onchange="updateAge()"></div>
+            <button class="btn btn-primary" onclick="startQRScanner()" style="margin-top:20px;">📷 Сканировать QR</button>
+        </div>
+        <div id="patientIdDisplay" style="font-size:0.9em; margin-top:8px;"></div>
+    </div>
+    <div id="scannerModal" class="modal"><div class="modal-content"><video id="scannerVideo" autoplay playsinline></video><br><button class="btn btn-warning" onclick="stopQRScanner()">❌ Закрыть</button></div></div>
+
+    <header>
+        <h1>🏥 Смарт-интерфейс первичного осмотра (Приказ 530н)</h1>
+        <div class="header-actions"><span style="color:var(--text-secondary);font-size:0.8em;">МИС «Самсон»</span></div>
+    </header>
+
+    <div class="main-grid">
+        <div>
+            <div class="panel">
+                <div class="panel-title">⚡ Витальные параметры</div>
+                <div class="vital-signs">
+                    <div class="vital-sign"><label>Температура (°C)</label><input type="text" id="tempInput" placeholder="36.6" oninput="allowTempInput()" onblur="formatTemperature()"></div>
+                    <div class="vital-sign"><label>Пульс (уд/мин)</label><input type="number" id="pulseInput" placeholder="72" oninput="checkVitals(); updateScores()"></div>
+                    <div class="vital-sign"><label>ЧД (дых/мин)</label><input type="number" id="rrInput" placeholder="18" oninput="checkVitals(); updateScores()"></div>
+                    <div class="vital-sign"><label>Сатурация (%)</label><input type="number" id="spo2Input" placeholder="97" oninput="checkVitals(); updateScores()"></div>
+                    <div class="vital-sign"><label>АД (мм рт.ст.)</label><input type="text" id="adInput" placeholder="120/80" oninput="allowBPInput()" onblur="formatBloodPressure()"></div>
+                    <div class="vital-sign"><label>Рост (см)</label><input type="number" id="heightInput" placeholder="170" oninput="calcBMI(); updateScores()"></div>
+                    <div class="vital-sign"><label>Вес (кг)</label><input type="number" id="weightInput" placeholder="70" oninput="calcBMI(); updateScores()"></div>
+                </div>
+            </div>
+            <div class="panel"><div class="panel-title">📋 Лист нетрудоспособности</div><div class="checkbox-row"><input type="checkbox" id="lnCheckbox" onchange="toggleLN()"><label for="lnCheckbox">Нужен б/л</label><div id="lnDateContainer" style="display:none;margin-left:10px;"><label>Дата начала:</label><input type="date" id="lnDateInput"></div></div></div>
+            <div class="panel"><div class="panel-title">🫁 Флюорография</div><div class="form-row"><div class="form-group" style="max-width:130px;"><label>Год</label><input type="number" id="flgYear" placeholder="2025" oninput="checkFLG()"></div><div class="form-group" style="max-width:130px;"><label>Месяц</label><select id="flgMonth" onchange="checkFLG()"><option value="">—</option><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select></div><span id="flgWarning" style="display:none;" class="flg-warning">⚠ Более года!</span></div></div>
+            <div class="panel">
+                <div class="panel-title">🩺 Диагноз</div>
+                <div class="form-group"><label>Предварительный диагноз</label><input type="text" id="diagnosisInput" placeholder="ОКИ, Пневмония, Менингит, Тонзиллит, ОВГ, Рожа, Herpes zoster, COVID-19..." oninput="parseDiagnosis()"><div id="diagnosisSuggestion" style="display:none;"></div></div>
+                <div id="dehydrationFields" style="display:none;margin-top:8px;"><div class="form-row"><div class="form-group"><label>💧 Дегидратация</label><select id="dehydrationGrade" onchange="updateField('dehydrationGrade', this.value); updateDynamicBlock();"><option value="">—</option><option value="I">I степень</option><option value="II">II степень</option><option value="III">III степень</option></select></div><div class="form-group"><label>🧪 Тип</label><select id="dehydrationType" onchange="updateField('dehydrationType', this.value)"><option value="">—</option><option value="Изотонический">Изотонический</option><option value="Гипертонический">Гипертонический</option><option value="Гипотонический">Гипотонический</option></select></div></div></div>
+                <div id="pneumoniaFields" style="display:none;margin-top:8px;">
+                    <div class="form-row">
+                        <div class="form-group"><label>📍 Сторона поражения</label><select id="pneumoniaSide" onchange="updatePneumoniaFields()"><option value="правосторонняя">Правосторонняя</option><option value="левосторонняя">Левосторонняя</option><option value="полисегментарная">Полисегментарная (мультилобарная)</option><option value="двусторонняя">Двусторонняя</option></select></div>
+                        <div class="form-group"><label>🫁 Степень ДН</label><select id="dnGrade" onchange="updateField('dnGrade', this.value); updatePneumoniaFields(); updateScores()"><option value="ДН0">ДН0</option><option value="ДН1">ДН1</option><option value="ДН2">ДН2</option><option value="ДН3">ДН3</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>📊 CRB-65</label><input type="number" id="crb65" value="0" min="0" max="4" onchange="updateField('crb65', this.value)"></div>
+                        <div class="form-group"><label>📊 SMRT-CO (SMART-COP)</label><input type="number" id="smrtco" value="0" min="0" max="11" onchange="updateField('smrtco', this.value)"></div>
+                    </div>
+                </div>
+                <div id="erysipelasFields" style="display:none;margin-top:8px;"><div class="form-row"><div class="form-group"><label>🔄 Характер</label><select id="erysipelasType" onchange="updateField('erysipelasType', this.value)"><option value="Первичная">Первичная</option><option value="Повторная">Повторная</option><option value="Рецидивирующая">Рецидивирующая</option></select></div><div class="form-group"><label>📍 Сторона</label><select id="erysipelasSide" onchange="updateField('erysipelasSide', this.value)"><option value="правой">Правая</option><option value="левой">Левая</option></select></div><div class="form-group"><label>📝 Часть тела</label><input type="text" id="erysipelasPart" placeholder="голень, лицо..." onchange="updateField('erysipelasPart', this.value)"></div><div class="form-group"><label>🎨 Форма</label><select id="erysipelasForm" onchange="updateField('erysipelasForm', this.value); updateLocalStatusTemplate();"><option value="эритематозная">Эритематозная</option><option value="буллезная">Буллезная</option><option value="геморрагическая">Геморрагическая</option></select></div></div></div>
+                <div id="herpesFields" style="display:none;margin-top:8px;"><div class="form-row"><div class="form-group"><label>📍 Сторона</label><select id="herpesSide" onchange="updateField('herpesSide', this.value)"><option value="правой">Правая</option><option value="левой">Левая</option></select></div><div class="form-group"><label>📝 Локализация</label><input type="text" id="herpesLocation" placeholder="грудная клетка, лицо..." onchange="updateField('herpesLocation', this.value)"></div><div class="form-group"><label>🔍 Характер высыпаний</label><select id="herpesRashType" onchange="updateField('herpesRashType', this.value); updateLocalStatusTemplate();"><option value="везикулы">Везикулы с прозрачным содержимым</option><option value="пустулы">Везикулы с мутным содержимым + пустулы</option><option value="смешанные">Смешанные (везикулы, корки)</option></select></div></div></div>
+                <div class="form-group" style="margin-top:8px;">
+                    <label>Аллергоанамнез</label>
+                    <div class="allergy-entry"><input type="text" id="allergyDrug" placeholder="Начните вводить" style="max-width:160px;"><select id="allergyReaction" style="max-width:160px;"><option value="">—</option><option value="сыпь">Сыпь</option><option value="шок">Шок</option><option value="отек Квинке">Отек Квинке</option></select><button class="btn btn-secondary" onclick="addAllergy()">+</button></div>
+                    <div class="drug-hint">Введите минимум 2 символа для поиска</div>
+                    <div class="allergy-list" id="allergyList"></div>
+                </div>
+                <div class="form-group" style="margin-top:8px;"><label>Хронические (ГБ, СД, АИТ, бер 12 нед, Ожирение, ХСН, ЗНО, ФП)</label><input type="text" id="chronicInput" placeholder="ГБ, СД, бер 12 нед" oninput="parseChronic()"><div class="chronic-tags" id="chronicTags"></div></div>
+                <div class="panel" style="margin-top:10px;">
+                    <div class="panel-title">🦠 Перенесенные заболевания</div>
+                    <div class="checkbox-group">
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkTbc" onchange="toggleCheckDetail('tbc')"><label for="chkTbc">TBC</label></div><div id="detailTbc" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('tbc', this.value)"></div></div>
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkMalaria" onchange="toggleCheckDetail('malaria')"><label for="chkMalaria">Малярия</label></div><div id="detailMalaria" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('malaria', this.value)"></div></div>
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkHiv" onchange="toggleCheckDetail('hiv')"><label for="chkHiv">ВИЧ</label></div><div id="detailHiv" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('hiv', this.value)"></div></div>
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkVener" onchange="toggleCheckDetail('vener')"><label for="chkVener">вен.заб.</label></div><div id="detailVener" class="infection-detail"><input type="text" placeholder="Название" oninput="updateCheckField('vener', this.value)"><input type="number" placeholder="Год" oninput="updateCheckField('venerYear', this.value)"></div></div>
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkGlist" onchange="toggleCheckDetail('glist')"><label for="chkGlist">глисты</label></div><div id="detailGlist" class="infection-detail"><input type="text" placeholder="Название" oninput="updateCheckField('glist', this.value)"><input type="number" placeholder="Год" oninput="updateCheckField('glistYear', this.value)"></div></div>
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkHvg" onchange="toggleCheckDetail('hvg')"><label for="chkHvg">ХВГ</label></div><div id="detailHvg" class="infection-detail"><input type="text" placeholder='Буква ("С")' oninput="updateCheckField('hvg', this.value)"></div></div>
+                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkCovid" onchange="toggleCheckDetail('covid')"><label for="chkCovid">COVID</label></div><div id="detailCovid" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('covid', this.value)"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel" id="dynamicBlock"><div class="panel-title">📝 Осмотр</div><div id="dynamicContent"><p style="color:var(--text-secondary);">Выберите диагноз...</p></div></div>
+            <div class="panel">
+                <div class="panel-title">📋 Дополнительные сведения</div>
+                <div class="form-group"><label>Основное заболевание</label><textarea id="mainDisease" oninput="updateField('mainDisease', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Осложнения основного заболевания</label><textarea id="complications" oninput="updateField('complications', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Внешняя причина при травмах, отравлениях</label><textarea id="externalCause" oninput="updateField('externalCause', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Сопутствующие заболевания</label><textarea id="concomitant" oninput="updateField('concomitant', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Дополнительные сведения о заболевании</label><textarea id="additionalInfo" oninput="updateField('additionalInfo', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Обоснование предварительного диагноза (диагноза при поступлении)</label><textarea id="diagnosisBasis" oninput="updateField('diagnosisBasis', this.value); autoResize(this);">диагноз установлен на основании жалоб, анамнеза заболевания, объективного осмотра</textarea></div>
+                <div class="form-group">
+                    <label>Обоснование оказания медицинской помощи в стационарных условиях, в условиях дневного стационара</label>
+                    <div class="form-row">
+                        <select id="hospitalBasisSelect" onchange="addHospitalBasisTemplate()"><option value="">— Обоснование —</option><option value="тяжесть состояния, неэффективность амбулаторного лечения, Госпитализация в БИО № ___">Тяжесть, неэффективность лечения</option><option value="Получен отказ от предложенной госпитализации...">Отказ от госпитализации</option><option value="острая инфекционная патология исключена, пациент направлен в стационар по профилю...">Направлен в профильный стационар</option><option value="острая инфекционная патология исключена, в заключении даны рекомендации по амбулаторному лечению...">Исключена инфекция, амбулаторно</option></select>
+                        <select id="transportSelect" onchange="addTransportTemplate()"><option value="">— Транспортировка —</option><option value="служебным транспортом СКИБ в сопровождении мед персонала">Служебным транспортом</option><option value="бригадой СМП по согласованию с ___">СМП</option><option value="на личном транспорте, в сопровождении родственников...">Личным транспортом</option></select>
+                    </div>
+                    <textarea id="hospitalBasis" oninput="updateField('hospitalBasis', this.value); autoResize(this);"></textarea>
+                </div>
+                <div class="form-group"><label>Выполнены медицинские вмешательства</label><textarea id="interventions" oninput="updateField('interventions', this.value); autoResize(this);"></textarea><select id="interventionTemplate" onchange="addInterventionTemplate()"><option value="">— Неотложка —</option><option value="Гипертермия">Гипертермия</option><option value="Гипертония">Гипертония</option><option value="Гипотония">Гипотония</option><option value="Аллергия">Аллергия</option><option value="Септический шок">Септический шок</option><option value="Инфаркт миокарда">Инфаркт миокарда</option></select></div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">📋 План</div>
+                <div class="form-group"><label>План обследования</label><textarea id="examPlan" oninput="updateField('examPlan', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group" style="position:relative;"><label>План лечения</label><textarea id="treatmentPlan" oninput="updateField('treatmentPlan', this.value); autoResize(this);"></textarea><ul id="abtDropdown" class="abt-dropdown"></ul></div>
+                <div class="form-group"><label>Назначения</label><textarea id="prescriptions" oninput="updateField('prescriptions', this.value); autoResize(this);"></textarea></div>
+            </div>
+        </div>
+        <div>
+            <div class="panel">
+                <div class="panel-title">📄 Предпросмотр (форма 530н)</div>
+                <div class="preview-box" id="previewBox">Заполните данные...</div>
+                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-warning" onclick="fillNormal()">✅ Остальное норма</button><button class="btn btn-primary" onclick="updatePreview()">🔄 Обновить</button></div>
+            </div>
+        </div>
+    </div>
+</div>
+<ul id="mucousDropdown" class="mucous-dropdown" style="position:absolute; display:none;"></ul>
+
+<script src="config.js"></script>
+<script src="engine.js"></script>
+</body>
+</html>
