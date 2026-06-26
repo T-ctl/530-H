@@ -1,4 +1,4 @@
-// engine.js — полная логика интерфейса, соответствующая приказу 530н
+// engine.js — полная логика интерфейса v3 (исправления)
 // Подключается после config.js
 
 // ========== УТИЛИТЫ ==========
@@ -648,7 +648,7 @@ function updateDynamicBlock() {
     updatePreview();
 }
 
-// ========== ВСПОМОГАТЕЛЬНЫЕ ==========
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 function updatePneumoniaFields() {
     const diag = state.selectedDiagnosis;
     if (!diag || diag.type !== 'pneumonia') return;
