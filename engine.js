@@ -1,4 +1,4 @@
-// engine.js — полная логика интерфейса v3 (исправления)
+// engine.js — полная логика интерфейса, соответствующая приказу 530н
 // Подключается после config.js
 
 // ========== УТИЛИТЫ ==========
@@ -325,7 +325,7 @@ function updateSymptomHints() {
                 if (!state.selectedDiagnosis || state.selectedDiagnosis.name !== data.diagKey) {
                     selectDiagnosis(data.diagKey);
                 }
-                renderObjective();
+                updateDynamicBlock();
             };
             container.appendChild(btn);
             break;
@@ -347,7 +347,7 @@ function checkDiagnosisTriggers() {
             btn.setAttribute('data-diag', diagKey);
             btn.onclick = () => {
                 selectDiagnosis(diagKey);
-                renderObjective();
+                updateDynamicBlock();
             };
             container.appendChild(btn);
             break;
@@ -391,18 +391,19 @@ function selectDiagnosis(key) {
     document.getElementById('additionalInfoPanel').style.display = 'block';
     document.getElementById('planPanel').style.display = 'block';
 
-    const module = DIAGNOSIS_MODULES[m.type] || DIAGNOSIS_MODULES['default'];
-    if (!state.dynamicFields['currentComplaints']) {
-        const field = document.getElementById('currentComplaintsField');
-        if (module.typicalComplaints && field && !field.value.trim()) {
+    renderDiagnosisSpecificFields();
+
+    const field = document.getElementById('currentComplaintsField');
+    if (!state.dynamicFields['currentComplaints'] && field && !field.value.trim()) {
+        const module = DIAGNOSIS_MODULES[m.type] || DIAGNOSIS_MODULES['default'];
+        if (module.typicalComplaints) {
             field.value = module.typicalComplaints;
             updateField('currentComplaints', module.typicalComplaints);
-            renderSymptomButtons();
         }
     }
-    renderDiagnosisSpecificFields(module);
+    renderSymptomButtons();
     renderComplaintsShortcuts();
-    renderObjective();
+    updateDynamicBlock();
 
     if (m.examPlanTemplate) {
         document.getElementById('examPlan').value = m.examPlanTemplate;
@@ -433,87 +434,221 @@ function updateUIAfterDiagnosis() {
     document.getElementById('objectivePanel').style.display = 'none';
     document.getElementById('additionalInfoPanel').style.display = 'none';
     document.getElementById('planPanel').style.display = 'none';
-    document.getElementById('complaintsShortcuts').innerHTML = '';
 }
 
-// ========== ОТРИСОВКА СПЕЦИФИЧНЫХ ПОЛЕЙ И ОБЪЕКТИВНОГО СТАТУСА ==========
-function renderDiagnosisSpecificFields(module) {
+// ========== ОТРИСОВКА СПЕЦИФИЧНЫХ ПОЛЕЙ ДИАГНОЗА ==========
+function renderDiagnosisSpecificFields() {
     const container = document.getElementById('diagnosisSpecificContent');
-    container.innerHTML = module.renderSpecificFields ? module.renderSpecificFields(state) : '';
+    const diag = state.selectedDiagnosis;
+    if (!diag) { container.innerHTML = ''; return; }
+    let html = '';
+    if (diag.hasDehydration) {
+        html += `
+        <div class="form-row">
+            <div class="form-group">
+                <label>💧 Дегидратация</label>
+                <select id="dehydrationGrade" onchange="updateField('dehydrationGrade', this.value); updateDynamicBlock()">
+                    <option value="">—</option>
+                    <option value="I">I степень</option>
+                    <option value="II">II степень</option>
+                    <option value="III">III степень</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>🧪 Тип дегидратации</label>
+                <select id="dehydrationType" onchange="updateField('dehydrationType', this.value)">
+                    <option value="">—</option>
+                    <option value="Изотонический" selected>Изотонический</option>
+                    <option value="Гипертонический">Гипертонический</option>
+                    <option value="Гипотонический">Гипотонический</option>
+                </select>
+            </div>
+        </div>`;
+    }
+    if (diag.hasPneumoniaFields) {
+        html += `
+        <div class="form-row">
+            <div class="form-group">
+                <label>📍 Сторона поражения</label>
+                <select id="pneumoniaSide" onchange="updatePneumoniaFields()">
+                    <option value="правосторонняя">Правосторонняя</option>
+                    <option value="левосторонняя">Левосторонняя</option>
+                    <option value="полисегментарная">Полисегментарная (мультилобарная)</option>
+                    <option value="двусторонняя">Двусторонняя</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>🫁 Степень ДН</label>
+                <select id="dnGrade" onchange="updatePneumoniaFields(); updateScores()">
+                    <option value="ДН0">ДН0</option>
+                    <option value="ДН1">ДН1</option>
+                    <option value="ДН2">ДН2</option>
+                    <option value="ДН3">ДН3</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>📊 CRB-65</label>
+                <input type="text" id="crb65" value="0" inputmode="numeric" onchange="updateField('crb65', this.value)">
+            </div>
+            <div class="form-group">
+                <label>📊 SMRT-CO (SMART-COP)</label>
+                <input type="text" id="smrtco" value="0" inputmode="numeric" onchange="updateField('smrtco', this.value)">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>🧪 Альбумин (г/л)</label>
+                <input type="text" id="albuminInput" inputmode="numeric" placeholder="35" oninput="updateField('albumin', this.value); updateScores()">
+            </div>
+            <div class="form-group">
+                <label>🧪 pH артериальной крови</label>
+                <input type="text" id="phInput" inputmode="decimal" placeholder="7.40" oninput="updateField('ph', this.value); updateScores()">
+            </div>
+        </div>`;
+    }
+    if (diag.hasErysipelasFields) {
+        html += `
+        <div class="form-row">
+            <div class="form-group"><label>🔄 Характер</label><select id="erysipelasType" onchange="updateField('erysipelasType', this.value)"><option value="Первичная">Первичная</option><option value="Повторная">Повторная</option><option value="Рецидивирующая">Рецидивирующая</option></select></div>
+            <div class="form-group"><label>📍 Сторона</label><select id="erysipelasSide" onchange="updateField('erysipelasSide', this.value)"><option value="правой">Правая</option><option value="левой">Левая</option></select></div>
+            <div class="form-group"><label>📝 Часть тела</label><input type="text" id="erysipelasPart" placeholder="голень, лицо..." onchange="updateField('erysipelasPart', this.value)"></div>
+            <div class="form-group"><label>🎨 Форма</label><select id="erysipelasForm" onchange="updateField('erysipelasForm', this.value); updateDynamicBlock()"><option value="эритематозная">Эритематозная</option><option value="буллезная">Буллезная</option><option value="геморрагическая">Геморрагическая</option></select></div>
+        </div>`;
+    }
+    if (diag.hasHerpesFields) {
+        html += `
+        <div class="form-row">
+            <div class="form-group"><label>📍 Сторона</label><select id="herpesSide" onchange="updateField('herpesSide', this.value)"><option value="правой">Правая</option><option value="левой">Левая</option></select></div>
+            <div class="form-group"><label>📝 Локализация</label><input type="text" id="herpesLocation" placeholder="грудная клетка, лицо..." onchange="updateField('herpesLocation', this.value)"></div>
+            <div class="form-group"><label>🔍 Характер высыпаний</label><select id="herpesRashType" onchange="updateField('herpesRashType', this.value); updateDynamicBlock()"><option value="везикулы">Везикулы с прозрачным содержимым</option><option value="пустулы">Везикулы с мутным содержимым + пустулы</option><option value="смешанные">Смешанные (везикулы, корки)</option></select></div>
+        </div>`;
+    }
+    container.innerHTML = html;
     autoResizeAll(container);
 }
 
-function renderComplaintsShortcuts() {
-    const container = document.getElementById('complaintsShortcuts');
-    container.innerHTML = '';
-    if (!state.selectedDiagnosis) return;
-    const module = DIAGNOSIS_MODULES[state.selectedDiagnosis.type] || DIAGNOSIS_MODULES['default'];
-    if (module.typicalComplaints) {
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-secondary';
-        btn.textContent = '📋 Вставить типичные жалобы';
-        btn.onclick = () => {
-            const field = document.getElementById('currentComplaintsField');
-            field.value = module.typicalComplaints;
-            updateField('currentComplaints', field.value);
-            autoResize(field);
-            renderSymptomButtons();
-            renderObjective();
-        };
-        container.appendChild(btn);
-    }
-}
-
-function renderObjective() {
+// ========== КЛЮЧЕВАЯ ФУНКЦИЯ: ОБЪЕКТИВНЫЙ СТАТУС ==========
+function updateDynamicBlock() {
+    const diag = state.selectedDiagnosis;
     const container = document.getElementById('objectiveContent');
-    if (!state.selectedDiagnosis) {
+    if (!diag) {
         container.innerHTML = '<p style="color:var(--text-secondary);">Выберите диагноз</p>';
         return;
     }
-    const module = DIAGNOSIS_MODULES[state.selectedDiagnosis.type] || DIAGNOSIS_MODULES['default'];
+
+    const allObjFields = ['skin','edema','mucous','subcutFat','lymphNodes','musculoskeletal','respiratory','cardiovascular','abdomen','spleen','stool','peritoneal','rectal','urinary','urination','meningeal'];
+    const labelMap = {
+        skin:'Оценка состояния кожных покровов', edema:'Отеки', mucous:'Оценка состояния видимых слизистых оболочек',
+        subcutFat:'Состояние подкожно-жировой клетчатки', lymphNodes:'Результаты пальпации лимфатических узлов',
+        musculoskeletal:'Оценка костно-мышечной системы', respiratory:'Результаты аускультации легких',
+        cardiovascular:'Результаты перкуссии и аускультации сердца', abdomen:'Результаты пальпации органов брюшной полости с определением размеров печени и селезенки (перкуторно и пальпаторно в сантиметрах из-под края реберной дуги)',
+        spleen:'Селезенка', stool:'Оценка характера стула и кратности дефекации',
+        peritoneal:'Наличие симптомов раздражения брюшины', rectal:'Результаты пальцевого ректального исследования',
+        urinary:'Результаты обследования мочеполовой системы', urination:'Оценка характера мочеиспускания',
+        meningeal:'Наличие менингеальных симптомов'
+    };
+
     let templates = { ...CONFIG.normalTemplates };
-    if (module.getStatusTemplates) {
-        templates = module.getStatusTemplates(state, templates);
+
+    if (diag.statusTemplates) {
+        for (const [k, v] of Object.entries(diag.statusTemplates)) {
+            templates[k] = v;
+        }
     }
+
     if (state.chronicExpanded.some(ch => ch.key === 'ГБ')) {
         templates.cardiovascular = 'Тоны сердца ясные, ритмичные. Пульс ритмичный, удовлетворительного наполнения.';
     }
     if (state.chronicExpanded.some(ch => ch.key === 'СД')) {
         templates.skin = 'Кожные покровы обычной окраски, суховаты.';
     }
+
     const obesityEntry = state.chronicExpanded.find(c => c.key === 'Ожирение');
+    const preg = state.chronicExpanded.find(c => c.key === 'бер');
+    const isOKI = diag.type === 'oki';
+
     if (obesityEntry) {
-        templates.subcutFat = `Подкожно-жировая клетчатка развита избыточно (ИМТ ${obesityEntry.fields.bmi||''}).`;
+        templates.subcutFat = `Подкожно-жировая клетчатка развита избыточно (ИМТ ${obesityEntry.fields.bmi || ''}).`;
+        if (!isOKI) {
+            const deg = obesityEntry.fields.degree || 'I';
+            if (deg === 'I') {
+                templates.abdomen = 'Живот увеличен за счет избыточно развитой подкожной жировой клетчатки, не вздут, участвует в акте дыхания, при пальпации мягкий, безболезненный. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный.';
+            } else {
+                templates.abdomen = 'Живот увеличен за счет избыточно развитой подкожной жировой клетчатки, не вздут, участвует в акте дыхания, при пальпации мягкий, безболезненный. Печень не пальпируется в виду избыточно развитой подкожной жировой клетчатки.';
+            }
+        }
     }
-    const currentComplaints = state.dynamicFields['currentComplaints'] || '';
-    if (currentComplaints.includes('снижение диуреза')) {
-        templates.urination = 'Мочеиспускание со слов свободное, произвольное, безболезненное. Моча обычной окраски. Диурез снижен до ___ мл в сутки.';
+
+    if (preg) {
+        const weeks = getPregnancyWeeks(preg);
+        if (weeks && (weeks.min > 16 || weeks.max > 16)) {
+            templates.abdomen = 'Живот увеличен за счет беременности, не вздут, участвует в акте дыхания, при пальпации плотный за счет увеличенной матки, болезненный в эпигастрии. Матка в нормотонусе. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный. Размеры печени по Курлову 10*9*8. Вертикальный размер по среднеключичной линии 9 см.';
+        }
     }
-    const allObjFields = ['skin','edema','mucous','subcutFat','lymphNodes','musculoskeletal','respiratory','cardiovascular','abdomen','spleen','stool','peritoneal','rectal','urinary','urination','meningeal'];
-    const labelMap = {
-        skin:'Кожные покровы', edema:'Отеки', mucous:'Слизистые', subcutFat:'Подкожно-жировая клетчатка',
-        lymphNodes:'Лимфоузлы', musculoskeletal:'Костно-мышечная система', respiratory:'Аускультация легких',
-        cardiovascular:'Сердце', abdomen:'Живот', spleen:'Селезенка', stool:'Стул',
-        peritoneal:'Симптомы раздражения брюшины', rectal:'Ректальное исследование',
-        urinary:'Мочеполовая система', urination:'Мочеиспускание', meningeal:'Менингеальные симптомы'
-    };
+
+    if (isOKI) {
+        if (preg && getPregnancyWeeks(preg)?.min > 16) {
+            templates.abdomen = 'Живот увеличен за счет беременности, не вздут, участвует в акте дыхания, при пальпации плотный за счет увеличенной матки, болезненный в эпигастрии. Матка в нормотонусе. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный. Размеры печени по Курлову 10*9*8. Вертикальный размер по среднеключичной линии 9 см.';
+        } else if (obesityEntry) {
+            const deg = obesityEntry.fields.degree || 'I';
+            if (deg === 'I') {
+                templates.abdomen = 'Живот увеличен за счет избыточно развитой подкожной жировой клетчатки, не вздут, участвует в акте дыхания, при пальпации мягкий, болезненный в эпигастрии и левой подвздошной области. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный. Размеры печени по Курлову 10*9*8. Вертикальный размер по среднеключичной линии 9 см.';
+            } else {
+                templates.abdomen = 'Живот увеличен за счет избыточно развитой подкожной жировой клетчатки, не вздут, участвует в акте дыхания, при пальпации мягкий, болезненный в эпигастрии и левой подвздошной области. Печень не пальпируется в виду избыточно развитой подкожной жировой клетчатки.';
+            }
+        } else {
+            templates.abdomen = diag.statusTemplates.abdomen || CONFIG.normalTemplates.abdomen;
+        }
+        templates.mucous = 'Носовое дыхание не затруднено. Видимые слизистые и склеры физиологической окраски. Миндалины за дужками, чистые от налетов. Язык подсушен, обложен белым налетом.';
+
+        const dynamicsText = state.dynamicFields['dynamics'] || '';
+        const stoolNumber = extractStoolNumberFromDynamics(dynamicsText);
+        templates.stool = templates.stool?.replace('___', stoolNumber || '—') || CONFIG.normalTemplates.stool;
+
+        const currentComplaints = state.dynamicFields['currentComplaints'] || '';
+        if (/снижение диуреза|уменьшение диуреза/i.test(currentComplaints)) {
+            templates.urination = 'Мочеиспускание, со слов свободное, произвольное, безболезненное. Моча обычной окраски. Диурез снижен до ___ мл в сутки.';
+        } else {
+            templates.urination = CONFIG.normalTemplates.urination;
+        }
+    }
+
+    if (diag.type === 'tonsillitis') {
+        templates.mucous = 'Зев ярко гиперемирован, отмечается зернистость задней стенки глотки. Миндалины за дужками, чистые от налетов.';
+    }
+
+    const priorityFields = new Set();
+    if (diag.priorityFields) diag.priorityFields.forEach(f => priorityFields.add(f));
+    if (isOKI) {
+        priorityFields.delete('cardiovascular');
+        const dehydGrade = state.dynamicFields['dehydrationGrade'];
+        if (dehydGrade === 'II' || dehydGrade === 'III') {
+            priorityFields.add('skin');
+        }
+    }
+
     let html = '';
-    const priorityFields = module.priorityFields || [];
     for (const f of allObjFields) {
         if (!state.dynamicFields['status_'+f]) state.dynamicFields['status_'+f] = templates[f] || '';
-        const isPriority = priorityFields.includes(f);
-        html += `<div class="form-group ${isPriority?'priority-field':''}"><label>${isPriority?'⭐ ':''}${labelMap[f]}</label><textarea id="status_${f}" oninput="updateField('status_${f}', this.value); autoResize(this);">${state.dynamicFields['status_'+f]}</textarea></div>`;
+        const isPriority = priorityFields.has(f);
+        html += `<div class="form-group ${isPriority ? 'priority-field' : ''}">
+            <label>${isPriority ? '⭐ ' : ''}${labelMap[f]}</label>
+            <textarea id="status_${f}" oninput="updateField('status_${f}', this.value); autoResize(this);">${state.dynamicFields['status_'+f]}</textarea>
+        </div>`;
     }
-    html += `<div class="form-group"><label>Иные сведения, локальный статус</label><textarea id="status_localStatus" oninput="updateField('status_localStatus', this.value); autoResize(this);">${state.dynamicFields['status_localStatus'] || CONFIG.normalTemplates.localStatus}</textarea></div>`;
+    html += `<div class="form-group">
+        <label>Иные сведения (при наличии), локальный статус</label>
+        <textarea id="status_localStatus" oninput="updateField('status_localStatus', this.value); autoResize(this);">${state.dynamicFields['status_localStatus'] || CONFIG.normalTemplates.localStatus}</textarea>
+    </div>`;
+
     container.innerHTML = html;
     autoResizeAll(container);
     updatePreview();
 }
 
-function autoResizeAll(container) {
-    container.querySelectorAll('textarea').forEach(ta => autoResize(ta));
-}
-
+// ========== ВСПОМОГАТЕЛЬНЫЕ ==========
 function updatePneumoniaFields() {
     const diag = state.selectedDiagnosis;
     if (!diag || diag.type !== 'pneumonia') return;
@@ -525,19 +660,26 @@ function updatePneumoniaFields() {
     let severityReason = 'интоксикацией, респираторными явлениями, катаральным синдромом';
     if (dn !== 'ДН0') severityReason += `, ОДН ${dn.replace('ДН','')} ст.`;
     updateField('severityReason', severityReason);
-    renderObjective();
+    updateDynamicBlock();
     checkFLG();
     updateScores();
+}
+
+function autoResizeAll(container) {
+    container.querySelectorAll('textarea').forEach(ta => autoResize(ta));
 }
 
 // ========== ОБЩИЕ ФУНКЦИИ ОБНОВЛЕНИЯ ПОЛЕЙ ==========
 function updateField(id, val) {
     state.dynamicFields[id] = val;
     if (id === 'currentComplaints') {
-        renderObjective();
+        updateDynamicBlock();
         renderSymptomButtons();
         updateSymptomHints();
         checkDiagnosisTriggers();
+    }
+    if (id === 'dehydrationGrade' || id === 'erysipelasForm' || id === 'herpesRashType') {
+        updateDynamicBlock();
     }
     updatePreview();
 }
@@ -589,7 +731,7 @@ function parseChronic() {
     state.chronicExpanded = newChronic;
     renderChronicTags();
     updateConcomitantAndMeds();
-    renderObjective();
+    updateDynamicBlock();
     updateScores();
 }
 
@@ -612,7 +754,7 @@ function updateChronicField(idx, id, val) {
     if (state.chronicExpanded[idx]) {
         state.chronicExpanded[idx].fields[id] = val;
         updateConcomitantAndMeds();
-        renderObjective();
+        updateDynamicBlock();
         updateScores();
     }
 }
@@ -621,7 +763,7 @@ function removeChronic(idx) {
     state.chronicExpanded.splice(idx, 1);
     renderChronicTags();
     updateConcomitantAndMeds();
-    renderObjective();
+    updateDynamicBlock();
     updateScores();
 }
 
@@ -990,6 +1132,7 @@ function updatePreview() {
         L.push(`📅 Анамнез заболевания:\n   ${anamnesis}\n`);
     }
     if (state.dynamicFields['epidAnamnesis']) L.push(`🦠 Эпид.анамнез:\n   ${state.dynamicFields['epidAnamnesis']}\n`);
+
     L.push('🔬 Объективный статус:');
     const order = ['skin','edema','mucous','subcutFat','lymphNodes','musculoskeletal','respiratory','cardiovascular','abdomen','spleen','stool','peritoneal','rectal','urinary','urination','meningeal'];
     const labelMap = {
@@ -1004,6 +1147,7 @@ function updatePreview() {
         L.push(`   ${labelMap[f]}: ${v}`);
     }
     L.push('');
+
     if (state.dynamicFields['mainDisease']) L.push(`🩺 Основное заболевание: ${state.dynamicFields['mainDisease']}`);
     if (state.dynamicFields['complications']) L.push(`⚠ Осложнения: ${state.dynamicFields['complications']}`);
     if (state.dynamicFields['externalCause']) L.push(`💥 Внешняя причина: ${state.dynamicFields['externalCause']}`);
@@ -1013,6 +1157,7 @@ function updatePreview() {
     if (state.dynamicFields['hospitalBasis']) L.push(`🏥 Обоснование госпитализации: ${state.dynamicFields['hospitalBasis']}`);
     if (state.dynamicFields['interventions']) L.push(`💉 Вмешательства: ${state.dynamicFields['interventions']}`);
     L.push('');
+
     if (state.dynamicFields['examPlan']) L.push(`План обследования:\n   ${state.dynamicFields['examPlan']}\n`);
     if (state.dynamicFields['treatmentPlan']) L.push(`План лечения:\n   ${state.dynamicFields['treatmentPlan']}\n`);
     if (state.dynamicFields['prescriptions']) L.push(`Назначения:\n   ${state.dynamicFields['prescriptions']}\n`);
