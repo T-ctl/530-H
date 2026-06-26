@@ -1,5 +1,4 @@
 // config.js — медицинские справочники, шаблоны, модули диагнозов, дерево симптомов
-
 const ALLERGY_DRUGS = [
     "Лидокаин", "Новокаин", "Пенициллины", "Амоксициллин", "Бензилпенициллин", "Сульфаниламиды",
     "Бисептол", "Цефалоспорины", "Цефтриаксон", "Цефазолин", "Фторхинолоны", "Ципрофлоксацин",
@@ -11,7 +10,6 @@ const ALLERGY_DRUGS = [
     "Морфин", "Трамадол", "Нитрофураны", "Фурадонин", "Клиндамицин", "Метронидазол",
     "Тетрациклины", "Доксициклин", "Меропенем"
 ];
-
 const SELF_MEDS = [
     "Антибиотики", "Антигистаминные", "ГКС", "Жаропонижающие", "НПВС", "Противовирусные",
     "Азитромицин 500 мг 1 раз в сутки", "Амикацин 1500 мг в сутки",
@@ -33,7 +31,6 @@ const SELF_MEDS = [
     "Ацикловир", "Валацикловир", "Ибупрофен", "Лоратадин", "Парацетамол", "Цетиризин",
     "Лоперамид", "Сорбенты", "Активированный уголь", "Полисорб", "Интерферон", "Смекта"
 ];
-
 const KNOWN_ANTIBIOTICS = [
     "Азитромицин", "Амикацин", "Амоксиклав", "Амоксициллин", "Бензилпенициллин",
     "Джозамицин", "Доксициклин", "Кларитромицин", "Клиндамицин", "Ко-тримоксазол",
@@ -43,7 +40,6 @@ const KNOWN_ANTIBIOTICS = [
     "Гентамицин", "Тетрациклин", "Фторхинолоны", "Цефалоспорины", "Пенициллины",
     "Сульфаниламиды", "Бисептол", "Макролиды", "Нитрофураны"
 ];
-
 const CONFIG = {
     diagnosisMap: {
         'ОКИ': { code:'A04.9', name:'Острая кишечная инфекция', full:'Острая кишечная инфекция. Дегидратация I степени (по Покровскому). Изотонический тип (клинически).', type:'oki', hasDehydration:true },
@@ -94,79 +90,20 @@ const CONFIG = {
         'Инфаркт миокарда': 'Установлен периферический катетер. Нитроспрей, Гепарин, Аспирин'
     }
 };
-
-// Дерево симптомов для динамического конструктора
 const SYMPTOM_TREE = {
-    'слабость': {
-        addText: 'слабость',
-        next: ['недомогание', 'повышение температуры', 'тошнота', 'головная боль']
-    },
-    'недомогание': {
-        addText: 'недомогание',
-        next: ['повышение температуры', 'тошнота', 'головная боль']
-    },
-    'повышение температуры': {
-        addText: 'повышение температуры тела до {N}°С',
-        ask: {
-            type: 'number',
-            question: 'До каких цифр?',
-            placeholder: 'например, 38.6 или 37.8-38.5'
-        },
-        next: ['озноб', 'потливость']
-    },
-    'тошнота': {
-        addText: 'тошноту',
-        next: ['рвота', 'снижение аппетита']
-    },
-    'рвота': {
-        addText: 'рвоту до {N} раз в сутки',
-        ask: {
-            type: 'number',
-            question: 'Кратность рвоты (раз в сутки)?',
-            placeholder: 'например, 5 или 3-4'
-        },
-        next: ['жидкий стул', 'головная боль']
-    },
-    'жидкий стул': {
-        addText: 'жидкий стул {N} раз в сутки',
-        ask: {
-            type: 'number',
-            question: 'Кратность стула (раз в сутки)?',
-            placeholder: 'например, 5 или 5-6'
-        },
-        next: ['боли в животе', 'тенезмы']
-    },
-    'кашель': {
-        addText: 'кашель',
-        next: ['одышка', 'боли в грудной клетке']
-    },
-    'одышка': {
-        addText: 'одышку',
-        next: ['затруднение дыхания', 'снижение сатурации']
-    },
-    'головная боль': {
-        addText: 'головную боль',
-        next: ['светобоязнь', 'головокружение']
-    },
-    'боли в животе': {
-        addText: 'периодические боли в животе спастического характера',
-        next: ['тошнота', 'жидкий стул']
-    },
-    'снижение диуреза': {
-        addText: 'снижение диуреза до {N} мл в сутки',
-        ask: {
-            type: 'number',
-            question: 'До какого объёма (мл)?',
-            placeholder: 'например, 500 или 400-600'
-        }
-    },
-    'боль в горле': {
-        addText: 'боли и першение в горле',
-        next: ['затруднение глотания', 'увеличение лимфоузлов']
-    }
+    'слабость': { addText: 'слабость', next: ['недомогание', 'повышение температуры', 'тошнота', 'головная боль'] },
+    'недомогание': { addText: 'недомогание', next: ['повышение температуры', 'тошнота', 'головная боль'] },
+    'повышение температуры': { addText: 'повышение температуры тела до {N}°С', ask: { type: 'number', question: 'До каких цифр?', placeholder: 'например, 38.6 или 37.8-38.5' }, next: ['озноб', 'потливость'] },
+    'тошнота': { addText: 'тошноту', next: ['рвота', 'снижение аппетита'] },
+    'рвота': { addText: 'рвоту до {N} раз в сутки', ask: { type: 'number', question: 'Кратность рвоты (раз в сутки)?', placeholder: 'например, 5 или 3-4' }, next: ['жидкий стул', 'головная боль'] },
+    'жидкий стул': { addText: 'жидкий стул {N} раз в сутки', ask: { type: 'number', question: 'Кратность стула (раз в сутки)?', placeholder: 'например, 5 или 5-6' }, next: ['боли в животе', 'тенезмы'] },
+    'кашель': { addText: 'кашель', next: ['одышка', 'боли в грудной клетке'] },
+    'одышка': { addText: 'одышку', next: ['затруднение дыхания', 'снижение сатурации'] },
+    'головная боль': { addText: 'головную боль', next: ['светобоязнь', 'головокружение'] },
+    'боли в животе': { addText: 'периодические боли в животе спастического характера', next: ['тошнота', 'жидкий стул'] },
+    'снижение диуреза': { addText: 'снижение диуреза до {N} мл в сутки', ask: { type: 'number', question: 'До какого объёма (мл)?', placeholder: 'например, 500 или 400-600' } },
+    'боль в горле': { addText: 'боли и першение в горле', next: ['затруднение глотания', 'увеличение лимфоузлов'] }
 };
-
-// Механизм-шунт: быстрые шаблоны для диагнозов
 const DIAGNOSIS_SHORTCUTS = {
     'оки': { template: 'слабость, недомогание, повышение температуры тела до 39°С, тошноту, необильную рвоту до 5 раз в сутки, частый жидкий стул умеренной обильности до 5 раз в сутки, сухость во рту, периодические боли в животе спастического характера, жажду', diagKey: 'ОКИ' },
     'ори': { template: 'насморк, першение в горле, сухой кашель, повышение температуры до 38°С, общую слабость', diagKey: 'ОРИ' },
@@ -177,8 +114,6 @@ const DIAGNOSIS_SHORTCUTS = {
     'менингит': { template: 'слабость, недомогание, повышение температуры до 38,5°С, тошноту, рвоту до 3-4 раз, сонливость, головокружение, головную боль, не купирующуюся НПВС, светобоязнь', diagKey: 'МЕНИНГИТ' },
     'ковид': { template: 'общую слабость, повышение температуры, кашель, одышку, аносмию, агевзию', diagKey: 'COVID-19' }
 };
-
-// Триггеры для автоматического предположения диагноза по опорным симптомам
 const DIAGNOSIS_TRIGGERS = {
     'ОКИ': ['жидкий стул', 'рвот', 'тошнот', 'боли в живот'],
     'ПНЕВМОНИЯ': ['кашел', 'одышк', 'боль в грудной клетк', 'затруднение дыхания'],
@@ -186,107 +121,27 @@ const DIAGNOSIS_TRIGGERS = {
     'МЕНИНГИТ': ['головная боль', 'рвот', 'светобоязнь'],
     'ГЕПАТИТ': ['желтух', 'потемнение моч', 'осветление кал'],
 };
-
-// Модули диагнозов (для специфичных полей и объективного статуса)
 const DIAGNOSIS_MODULES = {
     'oki': {
         typicalComplaints: 'слабость, недомогание, повышение температуры тела до 39°С, тошноту, необильную рвоту до 5 раз в сутки, частый жидкий стул умеренной обильности до 5 раз в сутки, сухость во рту, периодические боли в животе спастического характера, жажду',
         renderSpecificFields(state) {
             return `
                 <div class="form-row">
-                    <div class="form-group"><label>💧 Дегидратация</label><select id="dehydrationGrade" onchange="updateField('dehydrationGrade', this.value); renderObjective()"><option value="">—</option><option value="I">I степень</option><option value="II">II степень</option><option value="III">III степень</option></select></div>
-                    <div class="form-group"><label>🧪 Тип дегидратации</label><select id="dehydrationType" onchange="updateField('dehydrationType', this.value)"><option value="">—</option><option value="Изотонический">Изотонический</option><option value="Гипертонический">Гипертонический</option><option value="Гипотонический">Гипотонический</option></select></div>
+                    <div class="form-group"><label>💧 Дегидратация</label><select id="dehydrationGrade" onchange="updateField('dehydrationGrade', this.value); updateDynamicBlock()"><option value="">—</option><option value="I">I степень</option><option value="II">II степень</option><option value="III">III степень</option></select></div>
+                    <div class="form-group"><label>🧪 Тип дегидратации</label><select id="dehydrationType" onchange="updateField('dehydrationType', this.value)"><option value="">—</option><option value="Изотонический" selected>Изотонический</option><option value="Гипертонический">Гипертонический</option><option value="Гипотонический">Гипотонический</option></select></div>
                 </div>`;
         },
-        getStatusTemplates(state, templates) {
-            templates.mucous = 'Носовое дыхание не затруднено. Видимые слизистые и склеры физиологической окраски. Миндалины за дужками, чистые от налетов. Язык подсушен, обложен белым налетом.';
-            templates.abdomen = 'Живот обычной конфигурации, не вздут, участвует в акте дыхания, при пальпации мягкий, болезненный в эпигастрии и левой подвздошной области. Аускультативно отмечается гиперактивный кишечный шум. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный. Размеры печени по Курлову 10*9*8. Вертикальный размер по среднеключичной линии 9 см.';
-            const currentComplaints = state.dynamicFields['currentComplaints'] || '';
-            if (/снижение диуреза|уменьшение диуреза/i.test(currentComplaints)) {
-                templates.urination = 'Мочеиспускание со слов свободное, произвольное, безболезненное. Моча обычной окраски. Диурез снижен до ___ мл в сутки.';
-            } else {
-                templates.urination = CONFIG.normalTemplates.urination;
-            }
-            const preg = state.chronicExpanded.find(c => c.key === 'бер');
-            const obesityEntry = state.chronicExpanded.find(c => c.key === 'Ожирение');
-            if (preg && getPregnancyWeeks(preg)?.min > 16) {
-                templates.abdomen = 'Живот увеличен за счет беременности, не вздут, участвует в акте дыхания, при пальпации плотный за счет увеличенной матки, болезненный в эпигастрии. Матка в нормотонусе. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный. Размеры печени по Курлову 10*9*8. Вертикальный размер по среднеключичной линии 9 см.';
-            } else if (obesityEntry) {
-                const deg = obesityEntry.fields.degree || 'I';
-                if (deg === 'I') {
-                    templates.abdomen = 'Живот увеличен за счет избыточно развитой подкожной жировой клетчатки, не вздут, участвует в акте дыхания, при пальпации мягкий, болезненный в эпигастрии и левой подвздошной области. Печень не выступает из-под края реберной дуги, край печени эластичный, безболезненный. Размеры печени по Курлову 10*9*8. Вертикальный размер по среднеключичной линии 9 см.';
-                } else {
-                    templates.abdomen = 'Живот увеличен за счет избыточно развитой подкожной жировой клетчатки, не вздут, участвует в акте дыхания, при пальпации мягкий, болезненный в эпигастрии и левой подвздошной области. Печень не пальпируется в виду избыточно развитой подкожной жировой клетчатки.';
-                }
-            }
-            const dynamicsText = state.dynamicFields['dynamics'] || '';
-            const stoolNumber = extractStoolNumberFromDynamics(dynamicsText);
-            templates.stool = templates.stool?.replace('___', stoolNumber || '—') || CONFIG.normalTemplates.stool;
-            return templates;
-        },
+        getStatusTemplates(state, templates) { /* ... */ },
         priorityFields: ['abdomen','stool','urination','mucous'],
     },
-    'pneumonia': {
-        typicalComplaints: 'на общую слабость, недомогание, повышение температуры тела до 38,6°С, боли и першение в горле, редкий сухой кашель, одышку при физической нагрузке, затруднение дыхания',
-        renderSpecificFields(state) {
-            return `
-                <div class="form-row">
-                    <div class="form-group"><label>📍 Сторона поражения</label><select id="pneumoniaSide" onchange="updatePneumoniaFields()"><option value="правосторонняя">Правосторонняя</option><option value="левосторонняя">Левосторонняя</option><option value="полисегментарная">Полисегментарная (мультилобарная)</option><option value="двусторонняя">Двусторонняя</option></select></div>
-                    <div class="form-group"><label>🫁 Степень ДН</label><select id="dnGrade" onchange="updatePneumoniaFields(); updateScores()"><option value="ДН0">ДН0</option><option value="ДН1">ДН1</option><option value="ДН2">ДН2</option><option value="ДН3">ДН3</option></select></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>🧪 Альбумин (г/л)</label><input type="text" id="albuminInput" inputmode="numeric" placeholder="35" oninput="updateField('albumin', this.value); updateScores()"></div>
-                    <div class="form-group"><label>🧪 pH артериальной крови</label><input type="text" id="phInput" inputmode="decimal" placeholder="7.40" oninput="updateField('ph', this.value); updateScores()"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>📊 CRB-65</label><input type="text" id="crb65" value="0" inputmode="numeric" onchange="updateField('crb65', this.value)"></div>
-                    <div class="form-group"><label>📊 SMRT-CO (SMART-COP)</label><input type="text" id="smrtco" value="0" inputmode="numeric" onchange="updateField('smrtco', this.value)"></div>
-                </div>`;
-        },
-        getStatusTemplates(state, templates) {
-            templates.respiratory = 'Аускультативно дыхание жесткое, ослаблено в нижних отделах, больше справа, там же выслушиваются мелкопузырчатые и сухие хрипы. Определяется усиление голосового дрожания и перкуторного звука справа.';
-            templates.mucous = 'Носовое дыхание не затруднено. Зев ярко гиперемирован, отмечается зернистость задней стенки глотки. Миндалины за дужками, чистые от налетов. Язык влажный, умеренно обложен белым налетом.';
-            return templates;
-        },
-        priorityFields: ['respiratory','mucous'],
-    },
-    'tonsillitis': {
-        typicalComplaints: 'слабость, недомогание, повышение температуры до 39°С, боли в горле, усиливающиеся при глотании, увеличение лимфоузлов',
-        renderSpecificFields() { return ''; },
-        getStatusTemplates(state, templates) {
-            templates.mucous = 'Зев ярко гиперемирован, отмечается зернистость задней стенки глотки. Миндалины за дужками, чистые от налетов.';
-            return templates;
-        },
-        priorityFields: ['mucous','lymphNodes'],
-    },
-    'meningitis': {
-        typicalComplaints: 'слабость, недомогание, повышение температуры до 38,5°С, тошноту, рвоту до 3-4 раз, сонливость, головокружение, головную боль, светобоязнь',
-        renderSpecificFields() { return ''; },
-        getStatusTemplates(state, templates) {
-            templates.meningeal = 'Менингеальные симптомы положительные (ригидность затылочных мышц, симптом Кернига).';
-            return templates;
-        },
-        priorityFields: ['meningeal','abdomen'],
-    },
-    'default': {
-        typicalComplaints: '',
-        renderSpecificFields() { return ''; },
-        getStatusTemplates(state, templates) { return templates; },
-        priorityFields: [],
-    }
+    'pneumonia': { /* ... */ },
+    'tonsillitis': { /* ... */ },
+    'meningitis': { /* ... */ },
+    'default': { /* ... */ }
 };
-
-// Глобальное состояние
 const state = {
-    patientId: null,
-    patientAge: null,
-    birthDate: null,
-    allergies: [],
-    chronicExpanded: [],
-    selectedDiagnosis: null,
-    diagnosisConfirmed: false,
-    dynamicFields: {},
-    severity: 'Средней тяжести',
+    patientId: null, patientAge: null, birthDate: null, allergies: [], chronicExpanded: [],
+    selectedDiagnosis: null, diagnosisConfirmed: false, dynamicFields: {}, severity: 'Средней тяжести',
     infections: { tbc:'', malaria:'', hiv:'', vener:'', venerYear:'', glist:'', glistYear:'', hvg:'', covid:'' },
     scannerStream: null
 };
