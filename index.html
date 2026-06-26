@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Смарт-интерфейс первичного осмотра (Приказ 530н)</title>
+    <title>Смарт-интерфейс первичного осмотра (Приказ 530н) – v3</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <link rel="stylesheet" href="style.css">
     <style>
-        /* Все стили остаются без изменений, можно вынести в style.css */
         :root {
             --danger: #ff4444; --warning: #ffaa00; --success: #00C851;
             --bg: #1a1a2e; --panel: #16213e; --card: #0f3460;
@@ -70,6 +68,9 @@
         .modal { display:none; position:fixed; z-index:2000; left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8); justify-content:center; align-items:center; }
         .modal-content { background:var(--panel); padding:20px; border-radius:12px; text-align:center; }
         #scannerVideo { max-width:300px; border-radius:8px; margin-bottom:10px; }
+        .symptom-btn { margin:3px; padding:6px 12px; border-radius:16px; background:var(--card); border:1px solid var(--border); color:var(--text); cursor:pointer; font-size:0.8em; transition:all 0.2s; }
+        .symptom-btn:hover { background:var(--accent); color:white; }
+        .symptom-btn.active { background:var(--accent); color:white; }
     </style>
 </head>
 <body>
@@ -79,7 +80,7 @@
         <div class="panel-title">📱 Идентификатор пациента (QR/штрихкод + дата рождения)</div>
         <div class="form-row">
             <div class="form-group" style="flex:2;"><label>Уникальный код</label><input type="text" id="patientIdInput" placeholder="Введите или отсканируйте код" oninput="updatePatientId()"></div>
-            <div class="form-group" style="flex:1;"><label>Дата рождения</label><input type="date" id="birthDateInput" onchange="updateAge()"></div>
+            <div class="form-group" style="flex:1;"><label>Дата рождения</label><input type="text" id="birthDateInput" placeholder="ДД.ММ.ГГГГ" inputmode="numeric" onblur="parseBirthDate(this.value)"></div>
             <button class="btn btn-primary" onclick="startQRScanner()" style="margin-top:20px;">📷 Сканировать QR</button>
         </div>
         <div id="patientIdDisplay" style="font-size:0.9em; margin-top:8px;"></div>
@@ -96,76 +97,83 @@
             <div class="panel">
                 <div class="panel-title">⚡ Витальные параметры</div>
                 <div class="vital-signs">
-                    <div class="vital-sign"><label>Температура (°C)</label><input type="text" id="tempInput" placeholder="36.6" oninput="allowTempInput()" onblur="formatTemperature()"></div>
-                    <div class="vital-sign"><label>Пульс (уд/мин)</label><input type="number" id="pulseInput" placeholder="72" oninput="checkVitals(); updateScores()"></div>
-                    <div class="vital-sign"><label>ЧД (дых/мин)</label><input type="number" id="rrInput" placeholder="18" oninput="checkVitals(); updateScores()"></div>
-                    <div class="vital-sign"><label>Сатурация (%)</label><input type="number" id="spo2Input" placeholder="97" oninput="checkVitals(); updateScores()"></div>
+                    <div class="vital-sign"><label>Температура (°C)</label><input type="text" id="tempInput" placeholder="36.6" inputmode="decimal" oninput="allowTempInput()" onblur="formatTemperature()"></div>
+                    <div class="vital-sign"><label>Пульс (уд/мин)</label><input type="text" id="pulseInput" placeholder="72" inputmode="numeric" oninput="updateField('pulse', this.value); updateScores()"></div>
+                    <div class="vital-sign"><label>ЧСС (уд/мин)</label><input type="text" id="hrInput" placeholder="72" inputmode="numeric" oninput="updateField('hr', this.value); updateScores()"></div>
+                    <div class="vital-sign"><label>ЧД (дых/мин)</label><input type="text" id="rrInput" placeholder="18" inputmode="numeric" oninput="updateField('rr', this.value); updateScores()"></div>
+                    <div class="vital-sign"><label>Сатурация (%)</label><input type="text" id="spo2Input" placeholder="97" inputmode="numeric" oninput="updateField('spo2', this.value); updateScores()"></div>
                     <div class="vital-sign"><label>АД (мм рт.ст.)</label><input type="text" id="adInput" placeholder="120/80" oninput="allowBPInput()" onblur="formatBloodPressure()"></div>
-                    <div class="vital-sign"><label>Рост (см)</label><input type="number" id="heightInput" placeholder="170" oninput="calcBMI(); updateScores()"></div>
-                    <div class="vital-sign"><label>Вес (кг)</label><input type="number" id="weightInput" placeholder="70" oninput="calcBMI(); updateScores()"></div>
+                    <div class="vital-sign"><label>Рост (см)</label><input type="text" id="heightInput" placeholder="170" inputmode="numeric" oninput="calcBMI(); updateScores()"></div>
+                    <div class="vital-sign"><label>Вес (кг)</label><input type="text" id="weightInput" placeholder="70" inputmode="numeric" oninput="calcBMI(); updateScores()"></div>
                 </div>
             </div>
             <div class="panel"><div class="panel-title">📋 Лист нетрудоспособности</div><div class="checkbox-row"><input type="checkbox" id="lnCheckbox" onchange="toggleLN()"><label for="lnCheckbox">Нужен б/л</label><div id="lnDateContainer" style="display:none;margin-left:10px;"><label>Дата начала:</label><input type="date" id="lnDateInput"></div></div></div>
             <div class="panel"><div class="panel-title">🫁 Флюорография</div><div class="form-row"><div class="form-group" style="max-width:130px;"><label>Год</label><input type="number" id="flgYear" placeholder="2025" oninput="checkFLG()"></div><div class="form-group" style="max-width:130px;"><label>Месяц</label><select id="flgMonth" onchange="checkFLG()"><option value="">—</option><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select></div><span id="flgWarning" style="display:none;" class="flg-warning">⚠ Более года!</span></div></div>
+
+            <!-- ЖАЛОБЫ -->
             <div class="panel">
-                <div class="panel-title">🩺 Диагноз</div>
-                <div class="form-group"><label>Предварительный диагноз</label><input type="text" id="diagnosisInput" placeholder="ОКИ, Пневмония, Менингит, Тонзиллит, ОВГ, Рожа, Herpes zoster, COVID-19..." oninput="parseDiagnosis()"><div id="diagnosisSuggestion" style="display:none;"></div></div>
-                <div id="dehydrationFields" style="display:none;margin-top:8px;"><div class="form-row"><div class="form-group"><label>💧 Дегидратация</label><select id="dehydrationGrade" onchange="updateField('dehydrationGrade', this.value); updateDynamicBlock();"><option value="">—</option><option value="I">I степень</option><option value="II">II степень</option><option value="III">III степень</option></select></div><div class="form-group"><label>🧪 Тип</label><select id="dehydrationType" onchange="updateField('dehydrationType', this.value)"><option value="">—</option><option value="Изотонический">Изотонический</option><option value="Гипертонический">Гипертонический</option><option value="Гипотонический">Гипотонический</option></select></div></div></div>
-                <div id="pneumoniaFields" style="display:none;margin-top:8px;">
-                    <div class="form-row">
-                        <div class="form-group"><label>📍 Сторона поражения</label><select id="pneumoniaSide" onchange="updatePneumoniaFields()"><option value="правосторонняя">Правосторонняя</option><option value="левосторонняя">Левосторонняя</option><option value="полисегментарная">Полисегментарная (мультилобарная)</option><option value="двусторонняя">Двусторонняя</option></select></div>
-                        <div class="form-group"><label>🫁 Степень ДН</label><select id="dnGrade" onchange="updateField('dnGrade', this.value); updatePneumoniaFields(); updateScores()"><option value="ДН0">ДН0</option><option value="ДН1">ДН1</option><option value="ДН2">ДН2</option><option value="ДН3">ДН3</option></select></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>📊 CRB-65</label><input type="number" id="crb65" value="0" min="0" max="4" onchange="updateField('crb65', this.value)"></div>
-                        <div class="form-group"><label>📊 SMRT-CO (SMART-COP)</label><input type="number" id="smrtco" value="0" min="0" max="11" onchange="updateField('smrtco', this.value)"></div>
-                    </div>
+                <div class="panel-title">📝 Жалобы</div>
+                <div id="symptomButtons" style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px;"></div>
+                <div id="dynamicSuggestions" style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px;"></div>
+                <div class="form-group">
+                    <textarea id="currentComplaintsField" placeholder="Опишите жалобы пациента" oninput="updateField('currentComplaints', this.value); autoResize(this); updateSymptomHints()"></textarea>
                 </div>
-                <div id="erysipelasFields" style="display:none;margin-top:8px;"><div class="form-row"><div class="form-group"><label>🔄 Характер</label><select id="erysipelasType" onchange="updateField('erysipelasType', this.value)"><option value="Первичная">Первичная</option><option value="Повторная">Повторная</option><option value="Рецидивирующая">Рецидивирующая</option></select></div><div class="form-group"><label>📍 Сторона</label><select id="erysipelasSide" onchange="updateField('erysipelasSide', this.value)"><option value="правой">Правая</option><option value="левой">Левая</option></select></div><div class="form-group"><label>📝 Часть тела</label><input type="text" id="erysipelasPart" placeholder="голень, лицо..." onchange="updateField('erysipelasPart', this.value)"></div><div class="form-group"><label>🎨 Форма</label><select id="erysipelasForm" onchange="updateField('erysipelasForm', this.value); updateLocalStatusTemplate();"><option value="эритематозная">Эритематозная</option><option value="буллезная">Буллезная</option><option value="геморрагическая">Геморрагическая</option></select></div></div></div>
-                <div id="herpesFields" style="display:none;margin-top:8px;"><div class="form-row"><div class="form-group"><label>📍 Сторона</label><select id="herpesSide" onchange="updateField('herpesSide', this.value)"><option value="правой">Правая</option><option value="левой">Левая</option></select></div><div class="form-group"><label>📝 Локализация</label><input type="text" id="herpesLocation" placeholder="грудная клетка, лицо..." onchange="updateField('herpesLocation', this.value)"></div><div class="form-group"><label>🔍 Характер высыпаний</label><select id="herpesRashType" onchange="updateField('herpesRashType', this.value); updateLocalStatusTemplate();"><option value="везикулы">Везикулы с прозрачным содержимым</option><option value="пустулы">Везикулы с мутным содержимым + пустулы</option><option value="смешанные">Смешанные (везикулы, корки)</option></select></div></div></div>
-                <div class="form-group" style="margin-top:8px;">
-                    <label>Аллергоанамнез</label>
-                    <div class="allergy-entry"><input type="text" id="allergyDrug" placeholder="Начните вводить" style="max-width:160px;"><select id="allergyReaction" style="max-width:160px;"><option value="">—</option><option value="сыпь">Сыпь</option><option value="шок">Шок</option><option value="отек Квинке">Отек Квинке</option></select><button class="btn btn-secondary" onclick="addAllergy()">+</button></div>
-                    <div class="drug-hint">Введите минимум 2 символа для поиска</div>
-                    <div class="allergy-list" id="allergyList"></div>
-                </div>
-                <div class="form-group" style="margin-top:8px;"><label>Хронические (ГБ, СД, АИТ, бер 12 нед, Ожирение, ХСН, ЗНО, ФП)</label><input type="text" id="chronicInput" placeholder="ГБ, СД, бер 12 нед" oninput="parseChronic()"><div class="chronic-tags" id="chronicTags"></div></div>
-                <div class="panel" style="margin-top:10px;">
-                    <div class="panel-title">🦠 Перенесенные заболевания</div>
-                    <div class="checkbox-group">
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkTbc" onchange="toggleCheckDetail('tbc')"><label for="chkTbc">TBC</label></div><div id="detailTbc" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('tbc', this.value)"></div></div>
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkMalaria" onchange="toggleCheckDetail('malaria')"><label for="chkMalaria">Малярия</label></div><div id="detailMalaria" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('malaria', this.value)"></div></div>
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkHiv" onchange="toggleCheckDetail('hiv')"><label for="chkHiv">ВИЧ</label></div><div id="detailHiv" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('hiv', this.value)"></div></div>
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkVener" onchange="toggleCheckDetail('vener')"><label for="chkVener">вен.заб.</label></div><div id="detailVener" class="infection-detail"><input type="text" placeholder="Название" oninput="updateCheckField('vener', this.value)"><input type="number" placeholder="Год" oninput="updateCheckField('venerYear', this.value)"></div></div>
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkGlist" onchange="toggleCheckDetail('glist')"><label for="chkGlist">глисты</label></div><div id="detailGlist" class="infection-detail"><input type="text" placeholder="Название" oninput="updateCheckField('glist', this.value)"><input type="number" placeholder="Год" oninput="updateCheckField('glistYear', this.value)"></div></div>
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkHvg" onchange="toggleCheckDetail('hvg')"><label for="chkHvg">ХВГ</label></div><div id="detailHvg" class="infection-detail"><input type="text" placeholder='Буква ("С")' oninput="updateCheckField('hvg', this.value)"></div></div>
-                        <div class="infection-item"><div class="infection-check"><input type="checkbox" id="chkCovid" onchange="toggleCheckDetail('covid')"><label for="chkCovid">COVID</label></div><div id="detailCovid" class="infection-detail"><input type="number" placeholder="Год" oninput="updateCheckField('covid', this.value)"></div></div>
-                    </div>
-                </div>
+                <div id="complaintsShortcuts" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
-            <div class="panel" id="dynamicBlock"><div class="panel-title">📝 Осмотр</div><div id="dynamicContent"><p style="color:var(--text-secondary);">Выберите диагноз...</p></div></div>
+
+            <!-- ПРЕДВАРИТЕЛЬНЫЙ ДИАГНОЗ -->
             <div class="panel">
+                <div class="panel-title">🩺 Предварительный диагноз</div>
+                <div class="form-group"><input type="text" id="diagnosisInput" placeholder="Начните вводить диагноз..." oninput="parseDiagnosis()"><div id="diagnosisSuggestion" style="display:none;"></div></div>
+                <div class="form-row" style="margin-top:8px;"><button class="btn btn-success" id="confirmDiagnosisBtn" style="display:none;" onclick="confirmDiagnosis()">✅ Подтвердить диагноз</button></div>
+            </div>
+
+            <!-- БЛОК АНАМНЕЗА ЗАБОЛЕВАНИЯ -->
+            <div class="panel" id="anamnesisPanel" style="display:none;">
+                <div class="panel-title">📅 Анамнез заболевания</div>
+                <div class="form-row">
+                    <div class="form-group"><label>Дата начала</label><input type="date" id="onsetDate" onchange="updateField('onsetDate', this.value); updatePreview();"></div>
+                    <div class="form-group"><label>Характер начала</label><select id="onsetType" onchange="updateField('onsetType', this.value)"><option value="остро">Остро</option><option value="постепенно">Постепенно</option></select></div>
+                </div>
+                <div class="form-group"><label>Жалобы первого дня болезни</label><textarea id="firstDayComplaintsField" placeholder="Опишите жалобы в первый день заболевания" oninput="updateField('firstDayComplaints', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Принимаемые препараты самостоятельно</label><input type="text" id="selfMeds" placeholder="Начните вводить" oninput="updateField('selfMeds', this.value)" value=""><div class="drug-hint">Введите минимум 2 символа для поиска</div></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Обращался ли за мед.помощью</label><input type="text" id="referralPlace" placeholder="Куда, когда, что назначено" oninput="updateField('referralPlace', this.value)"></div>
+                    <div class="form-group"><label>Тип обращения</label><select id="referralType" onchange="updateField('referralType', this.value)"><option value="дано направление">Дано направление</option><option value="обратился(-ась) самостоятельно">Самостоятельно</option><option value="вызвал(а) СМП">Вызвал(а) СМП</option></select></div>
+                </div>
+                <div class="form-group"><label>Динамика состояния</label><textarea id="dynamicsField" placeholder="Улучшение / ухудшение / без перемен (можно с перечнем симптомов)" oninput="updateField('dynamics', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Эпид.анамнез</label><textarea id="epidField" oninput="updateField('epidAnamnesis', this.value); autoResize(this);"></textarea></div>
+            </div>
+
+            <!-- ДИНАМИЧЕСКИЙ БЛОК ДЛЯ СПЕЦИФИЧНЫХ ПОЛЕЙ ДИАГНОЗА -->
+            <div class="panel" id="diagnosisSpecificPanel" style="display:none;">
+                <div id="diagnosisSpecificContent"></div>
+            </div>
+
+            <!-- ОБЪЕКТИВНЫЙ СТАТУС -->
+            <div class="panel" id="objectivePanel" style="display:none;">
+                <div class="panel-title">🔬 Объективный статус</div>
+                <div id="objectiveContent"></div>
+            </div>
+
+            <!-- ДОПОЛНИТЕЛЬНЫЕ СВЕДЕНИЯ -->
+            <div class="panel" id="additionalInfoPanel" style="display:none;">
                 <div class="panel-title">📋 Дополнительные сведения</div>
                 <div class="form-group"><label>Основное заболевание</label><textarea id="mainDisease" oninput="updateField('mainDisease', this.value); autoResize(this);"></textarea></div>
                 <div class="form-group"><label>Осложнения основного заболевания</label><textarea id="complications" oninput="updateField('complications', this.value); autoResize(this);"></textarea></div>
                 <div class="form-group"><label>Внешняя причина при травмах, отравлениях</label><textarea id="externalCause" oninput="updateField('externalCause', this.value); autoResize(this);"></textarea></div>
                 <div class="form-group"><label>Сопутствующие заболевания</label><textarea id="concomitant" oninput="updateField('concomitant', this.value); autoResize(this);"></textarea></div>
                 <div class="form-group"><label>Дополнительные сведения о заболевании</label><textarea id="additionalInfo" oninput="updateField('additionalInfo', this.value); autoResize(this);"></textarea></div>
-                <div class="form-group"><label>Обоснование предварительного диагноза (диагноза при поступлении)</label><textarea id="diagnosisBasis" oninput="updateField('diagnosisBasis', this.value); autoResize(this);">диагноз установлен на основании жалоб, анамнеза заболевания, объективного осмотра</textarea></div>
-                <div class="form-group">
-                    <label>Обоснование оказания медицинской помощи в стационарных условиях, в условиях дневного стационара</label>
-                    <div class="form-row">
-                        <select id="hospitalBasisSelect" onchange="addHospitalBasisTemplate()"><option value="">— Обоснование —</option><option value="тяжесть состояния, неэффективность амбулаторного лечения, Госпитализация в БИО № ___">Тяжесть, неэффективность лечения</option><option value="Получен отказ от предложенной госпитализации...">Отказ от госпитализации</option><option value="острая инфекционная патология исключена, пациент направлен в стационар по профилю...">Направлен в профильный стационар</option><option value="острая инфекционная патология исключена, в заключении даны рекомендации по амбулаторному лечению...">Исключена инфекция, амбулаторно</option></select>
-                        <select id="transportSelect" onchange="addTransportTemplate()"><option value="">— Транспортировка —</option><option value="служебным транспортом СКИБ в сопровождении мед персонала">Служебным транспортом</option><option value="бригадой СМП по согласованию с ___">СМП</option><option value="на личном транспорте, в сопровождении родственников...">Личным транспортом</option></select>
-                    </div>
-                    <textarea id="hospitalBasis" oninput="updateField('hospitalBasis', this.value); autoResize(this);"></textarea>
-                </div>
-                <div class="form-group"><label>Выполнены медицинские вмешательства</label><textarea id="interventions" oninput="updateField('interventions', this.value); autoResize(this);"></textarea><select id="interventionTemplate" onchange="addInterventionTemplate()"><option value="">— Неотложка —</option><option value="Гипертермия">Гипертермия</option><option value="Гипертония">Гипертония</option><option value="Гипотония">Гипотония</option><option value="Аллергия">Аллергия</option><option value="Септический шок">Септический шок</option><option value="Инфаркт миокарда">Инфаркт миокарда</option></select></div>
+                <div class="form-group"><label>Обоснование предварительного диагноза</label><textarea id="diagnosisBasis" oninput="updateField('diagnosisBasis', this.value); autoResize(this);">диагноз установлен на основании жалоб, анамнеза заболевания, объективного осмотра</textarea></div>
+                <div class="form-group"><label>Обоснование госпитализации</label><textarea id="hospitalBasis" oninput="updateField('hospitalBasis', this.value); autoResize(this);"></textarea></div>
+                <div class="form-group"><label>Выполнены медицинские вмешательства</label><textarea id="interventions" oninput="updateField('interventions', this.value); autoResize(this);"></textarea></div>
             </div>
-            <div class="panel">
+
+            <!-- ПЛАН -->
+            <div class="panel" id="planPanel" style="display:none;">
                 <div class="panel-title">📋 План</div>
                 <div class="form-group"><label>План обследования</label><textarea id="examPlan" oninput="updateField('examPlan', this.value); autoResize(this);"></textarea></div>
-                <div class="form-group" style="position:relative;"><label>План лечения</label><textarea id="treatmentPlan" oninput="updateField('treatmentPlan', this.value); autoResize(this);"></textarea><ul id="abtDropdown" class="abt-dropdown"></ul></div>
+                <div class="form-group"><label>План лечения</label><textarea id="treatmentPlan" oninput="updateField('treatmentPlan', this.value); autoResize(this);"></textarea></div>
                 <div class="form-group"><label>Назначения</label><textarea id="prescriptions" oninput="updateField('prescriptions', this.value); autoResize(this);"></textarea></div>
             </div>
         </div>
@@ -179,7 +187,6 @@
     </div>
 </div>
 <ul id="mucousDropdown" class="mucous-dropdown" style="position:absolute; display:none;"></ul>
-
 <script src="config.js"></script>
 <script src="engine.js"></script>
 </body>
